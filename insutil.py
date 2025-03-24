@@ -40,7 +40,14 @@ def mm_to_steps(mm):
 
 
 class PaperCanvas:
+    # init_x is the mm across the page, from top left
+    # init_y is the mm down the page, from top left
+    # left_motor_left_offset is the distance between the left motor wheel and edge of paper
+    # left_motor_top_offset is the distance between the left motor wheel and top of paper
+    # motor_dist is distance between left motor wheel and right motor wheel
     def __init__(self, init_x, init_y, left_motor_left_offset, left_motor_top_offset, motor_dist):
+        self.last_x = init_x
+        self.last_y = init_y
         self.current_x = init_x
         self.current_y = init_y
         self.delta_belts = []
@@ -54,50 +61,52 @@ class PaperCanvas:
 
     # moves the belts to a position, xy, on the page
     def goto(self, x, y):
-        self.current_x = x
-        self.current_y = y
+        self.goto_x(x)
+        self.goto_y(y)
 
     # goto, just for x
     def goto_x(self, x):
+        self.last_x = self.current_x
         self.current_x = x
 
     # goto, just for y
     def goto_y(self, y):
+        self.last_y = self.current_y
         self.current_y = y
 
-    # sample a point at a given position, adding it to the instruction list
+    # sample a point at a given position, adding the belt deltas to the instruction list
     def sample(self):
+        # get belt lengths at new position
         lb, rb = cartesian_to_belt(self.current_x + self.lm_h_offset, self.current_y + self.lm_v_offset, self.motor_dist)
         # print(f"x:{self.current_x + self.lm_h_offset} y:{self.current_y + self.lm_v_offset}")
         
+        # calculate the amount the belts moved, in mm
         delta_lb = lb - self.lb
         delta_rb = rb - self.rb
-        # delta_lb = self.lb - lb
-        # delta_rb = self.rb - rb
 
+        # transform the mm belt deltas into steps for the stepper motors
         delta_step_lb = round(mm_to_steps(delta_lb))
         delta_step_rb = -round(mm_to_steps(delta_rb))
 
+        # append the delta steps
         self.delta_belts.append((delta_step_lb, delta_step_rb))
 
         self.lb = lb
         self.rb = rb
 
-    # takes the list of points and generates instructions to move between them
+    # this function is really bad it was make super scrappy(ily?), it should pop the last belt instructions, compute the length change and apply it
+    # to the current_x/current_y. then i can NOT store the last_x and last_y
+    def pop_sample(self):
+        if(len(self.delta_belts)) > 0:
+            self.delta_belts.pop()
+            self.lb, self.rb = cartesian_to_belt(self.current_x + self.lm_h_offset, self.current_y + self.lm_v_offset, self.motor_dist)
+            self.current_x = self.last_x
+            self.current_y = self.last_y
+        else:
+            print("couldnt pop belt movement, no belt movements are on stack")
+
+    # takes the list of points and generates instructions to move between them. for some reason i have to pop the first two, i could figure out why but all i know is that it works.
     def gen_instructions(self):
-        deltas = []
-        
-        """
-        for i in range(1, len(self.belt_lengths)):
-            delta_x = self.belt_lengths[i][0] - self.belt_lengths[i - 1][0]
-            delta_y = self.belt_lengths[i][1] - self.belt_lengths[i - 1][1]
-
-            delta_x = round(mm_to_steps(delta_x))
-            delta_y = round(mm_to_steps(delta_y))
-
-            deltas.append((delta_x, delta_y))
-        """
-        
         delta_clone = self.delta_belts
         delta_clone.pop(0)
         delta_clone.pop(0)
