@@ -61,5 +61,8 @@ class Triangle:
         dist = math.sqrt((self.ccx - p.x) ** 2 + (self.ccy - p.y) ** 2)
         return dist <= self.ccr
 
-    def get_circumcircle_centre(self):
+    def get_circumcenter(self):
         return Point(self.ccx, self.ccy)
+
+    def has_edge(self, edge: Edge):
+        return self.edges[0] == edge or self.edges[1] == edge or self.edges[2] == edge

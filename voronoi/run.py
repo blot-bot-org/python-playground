@@ -2,12 +2,12 @@ from copy import copy
 from random import randint
 
 import matplotlib.pyplot as plt
+import networkx as nx
 from func import *
-from networkx import Graph, draw
 from object import *
 from PIL import Image, ImageDraw
 
-points = gen_points(70, 100, 700)
+points = gen_points(150, 0, 800)
 supertri = get_super_triangle(points)
 
 triangulation: set[Triangle] = {supertri}
@@ -64,62 +64,21 @@ for e in hull:
 image = Image.new("RGBA", size=(800, 800), color=(0, 0, 0, 255))
 image_draw = ImageDraw.Draw(image)
 
+
 """
-drawing hull and triangles
-
-for hull_edge in h:
-    image_draw.line((hull_edge.a.x, hull_edge.a.y, hull_edge.b.x, hull_edge.b.y), fill="yellow")
-    pass
-
-for tri in tris:
-    for edge in tri.edges:
-        # image_draw.line((edge.a.x, edge.a.y, edge.b.x, edge.b.y))
-        pass
-
-# image.show()
-"""
-
-
-voronoi_graph_edges = []
-
-map2 = {}
-for tri in tris:
-    for edge in tri.edges:
-        for tri2 in tris:
-            if edge in tri2.edges:
-                voronoi_graph_edges.append(Edge(tri.get_circumcircle_centre(), tri2.get_circumcircle_centre()))
-"""
-map = {}
-for tri in tris:
-    for edge in tri.edges:
-        map[edge.a] = []
-        map[edge.b] = []
-
-for tri in tris:
-    for edge in tri.edges:
-        map[edge.a].append(edge)
-        map[edge.b].append(edge)
-
-# for e in voronoi_graph_edges:
-#     image_draw.line((e.a.x, e.a.y, e.b.x, e.b.y), fill="white")
-#     pass
-
-#for p in points:
-#    image_draw.circle((p.x, p.y), radius=3, fill="red")
-#
-for (point, edges) in map.items():
-    for e in edges:
-        image_draw.line((e.a.x, e.a.y, e.b.x, e.b.y), fill=(60, 60, 60))
-"""
-
+print delaunay triangulation
 
 for triangle in tris:
-    color = (random.randint(100, 255), random.randint(100, 255), random.randint(100, 255))
+    color = (randint(100, 255), randint(100, 255), randint(100, 255))
     for e in triangle.edges:
         image_draw.line((e.a.x, e.a.y, e.b.x, e.b.y), fill=color)
+    cc = triangle.get_circumcenter()
+    #image_draw.circle((cc.x, cc.y), radius=3, fill=color)
 
 for p in points:
     image_draw.circle((p.x, p.y), radius=3, fill="red")
+    pass
+"""
 
 """
 for every triangle
@@ -133,6 +92,35 @@ for every triangle
     if not 3 neighbours (meaning 2 or less):
         remove triangle
 """
+
+triangle_graph = nx.Graph()
+
+print(len(tris))
+triangle_graph.add_nodes_from([tri.get_circumcenter() for tri in tris]) # add all triangles' circumcenters
+
+for ogtri in tris:
+    for tri2 in tris:
+        if ogtri == tri2:
+            continue
+        
+        for edge in ogtri.edges:
+            if tri2.has_edge(edge):
+                weight = edge_distance(ogtri.get_circumcenter(), tri2.get_circumcenter())
+                if weight < 10000: # this breaks things but it should be implemented properly at some point
+                    triangle_graph.add_edge(ogtri.get_circumcenter(), tri2.get_circumcenter(), weight=weight)
+                else:
+                    print(ogtri.get_circumcenter(), tri2.get_circumcenter(), weight)
+
+nodes_to_remove = [node for node in triangle_graph.nodes if triangle_graph.degree(node) < 2]
+triangle_graph.remove_nodes_from(nodes_to_remove)
+
+for n1, n2 in triangle_graph.edges():
+    image_draw.line((n1.x, n1.y, n2.x, n2.y))
+    pass
+
+for point in points:
+    image_draw.circle((point.x, point.y), radius=3, fill="red")
+
 
 
 
