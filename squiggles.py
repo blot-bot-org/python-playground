@@ -2,7 +2,7 @@ import math
 
 from PIL import Image, ImageDraw
 
-import insutil
+from insutil import *
 
 
 def rgb_to_greyscale(rgb: tuple[int, int, int]):
@@ -11,12 +11,106 @@ def rgb_to_greyscale(rgb: tuple[int, int, int]):
 # rounds a greyscale value (single int) to a finite set of values, usually between 0-255
 def round_to_band(value, bands):
     band_size = 256 / bands
-    return round(value / band_size) * int(round(band_size))
+    return round(value / band_size)
+
+
+orig_input = Image.open("./japan-edited.jpg")
+
+# get transparent to white
+# orig_input.load()
+# background = Image.new("RGB", orig_input.size, (0, 255, 0))
+# background.paste(orig_input, mask=orig_input.split()[3]) # 3 is the alpha channel
+# orig_input = background
+# orig_input.save("./orig.jpg")
 
 
 
-input = Image.open("./bird.webp")
-input_w, input_h = input.width, input.height
+orig_w, orig_h = orig_input.width, orig_input.height
+print(f"orig width:{orig_w} and orig height:{orig_h}")
+
+x_margin = 20
+y_margin = 66
+page_width = 210
+page_height = 297
+num_shades = 32
+pixels_mm = 1
+pixel_samples = 7
+
+# total possible dimensions
+max_width = page_width - 2 * x_margin
+max_height = page_height - 2 * y_margin
+
+# try scale by width
+aspect_scale = max_width / orig_w
+if aspect_scale * orig_h > max_height:
+    aspect_scale = max_height / orig_h
+
+aspect_scale *= pixels_mm
+
+scaled_width = int(round(orig_w * aspect_scale))
+scaled_height = int(round(orig_h * aspect_scale))
+scaled_image = orig_input.resize((scaled_width, scaled_height), resample=0)
+
+for x in range(scaled_width):
+    for y in range(scaled_height):
+        greyscale = rgb_to_greyscale(scaled_image.getpixel((x, y)))
+        greyscale = round_to_band(greyscale, num_shades)
+        scaled_image.putpixel((x, y), (greyscale, greyscale, greyscale))
+
+print(f"scaled width:{scaled_width} and scaled height:{scaled_height}")
+
+
+# image manip done, now draw image
+
+
+plt_x = x_margin
+plt_y = y_margin
+pc = PaperCanvas(plt_x, plt_y, (754 - 210) / 1.98, 192.0, 754)
+
+
+
+for column in range(scaled_height):
+    for row in range(scaled_width):
+        ltr = column % 2 == 0
+
+        darkness = (scaled_image.getpixel((row, column)) if ltr else scaled_image.getpixel((scaled_width - row - 1, column)))[0]
+        shade = num_shades - darkness # num between 0 <-> num_shades
+        y_mod = 0
+
+        for s in range(pixel_samples):
+            if ltr:
+                plt_x += 1 / (pixels_mm * pixel_samples)
+            else:
+                plt_x -= 1 / (pixels_mm * pixel_samples)
+
+            y_mod = math.sin(plt_x * math.pi * 2 * shade / 5) * (shade / num_shades * 0.9)
+
+            pc.goto(plt_x, min(plt_y + y_mod, scaled_height + y_margin))
+            pc.sample()
+
+    plt_y += 1 / pixels_mm
+
+    pc.goto(plt_x, max(y_margin, min(plt_y, scaled_height + y_margin)))
+    pc.sample()
+
+
+
+pc.pop_sample()
+print(f"last y: {pc.current_y}")
+
+ins = pc.gen_instructions()
+
+with open("../sim-rs/ins.json", "w") as fp:
+    fp.write(ins)
+
+
+
+
+exit(1)
+
+
+
+
 
 print(input.getpixel((0,0)))
 print(rgb_to_greyscale(input.getpixel((0,0))))
@@ -36,7 +130,7 @@ for x in range(input_w):
 
 
 color_shades = 16
-bands = 100
+bands = 120
 y_per_band = int(round(input_h / bands))
 shrunk_image = Image.new(mode="RGB", size=(int(round(input_w / y_per_band)), int(round(input_h / y_per_band))))
 shrunk_pixels = shrunk_image.load()
@@ -53,106 +147,13 @@ for y in range(0, int(round(input_h / y_per_band))):
         avg_greyscale = round_to_band(avg_greyscale, color_shades - 1)
         
         shrunk_pixels[x,y] = (avg_greyscale, avg_greyscale, avg_greyscale)
-        """
-        for large image: 
-        for i in range(y_per_band):
-            for j in range(y_per_band):
-                pixels[x * y_per_band + j, y * y_per_band + i] = (avg_greyscale, avg_greyscale, avg_greyscale)
-        """
 
+
+# measurements in mm
+x_margin = 20
+y_margin = 20
 
 
 # shrunk_image.show()
 # now we have pixelated the image into 16 colour shades
 
-# coeffcient between 0-1
-def lerp_wave(intensity, x, y, width, coefficient):
-    delta_x = (width) * coefficient + x
-    delta_y = y + math.sin(intensity * 4 * delta_x) * intensity / 1.4
-
-    return (delta_x, delta_y)
-
-
-def lerp(x1, y1, x2, y2, coefficient):
-    return (x1 + coefficient * (x2 - x1), y1 + coefficient * (y2 - y1))
-
-
-ins = []
-m_dist = 754
-page_left = (m_dist - 210) / 1.98
-page_top = 192
-last_x, last_y = page_left, page_top
-current_lbelt, current_rbelt = insutil.cartesian_to_belt(last_x, last_y, m_dist)
-
-"""
-1. Get position (disregarding previous)
-2. Add page offset
-3. Find belt lengths of position
-4. Find delta belt lengths, using last belt lengths
-5. Push delta lengths to ins
-"""
-
-# for y in range(0, bands):
-width_per_wave = 190 / bands
-end_at_right = True
-for y in range(bands):
-    end_at_right = not end_at_right
-    for x in range(bands):
-        val_band = int(round(shrunk_pixels[(bands - x - 1) if end_at_right else x, y][0] / color_shades))
-
-        if not end_at_right:
-            for sample_index in range(0, 10):
-                x_pos, y_pos = lerp_wave(val_band / 5, page_left + x * width_per_wave, page_top + y * 2.5, width_per_wave, sample_index/10)
-                y_pos = y_pos / 1.4;
-                last_x, last_y = x_pos, y_pos
-                left_belt, right_belt = insutil.cartesian_to_belt(x_pos, y_pos, m_dist)
-        
-                left_belt_delta = left_belt - current_lbelt
-                right_belt_delta = right_belt - current_rbelt
-                ins.append([int(round(insutil.mm_to_steps(-left_belt_delta))), int(round(insutil.mm_to_steps(-right_belt_delta)))])
-                current_lbelt = left_belt
-                current_rbelt = right_belt
-        else:
-            for sample_index in range(0, 10):
-                x_pos, y_pos = lerp_wave(val_band / 5, 190 + page_left - x * width_per_wave, page_top + y * 2.5, width_per_wave, 1 - sample_index/10)
-                y_pos = y_pos / 1.4;
-                last_x, last_y = x_pos, y_pos
-                left_belt, right_belt = insutil.cartesian_to_belt(x_pos, y_pos, m_dist)
-        
-                left_belt_delta = left_belt - current_lbelt
-                right_belt_delta = right_belt - current_rbelt
-                ins.append([int(round(insutil.mm_to_steps(-left_belt_delta))), int(round(insutil.mm_to_steps(-right_belt_delta)))])
-                current_lbelt = left_belt
-                current_rbelt = right_belt
-
-    for i in range(0, 10):
-        x_pos, y_pos = lerp(last_x, last_y, last_x, last_y + 2.5, i/10)
-        y_pos = y_pos / 1.4;
-        left_belt, right_belt = insutil.cartesian_to_belt(x_pos, y_pos, m_dist)
-        left_belt_delta = left_belt - current_lbelt
-        right_belt_delta = right_belt - current_rbelt
-        ins.append([int(round(insutil.mm_to_steps(-left_belt_delta))), int(round(insutil.mm_to_steps(-right_belt_delta)))])
-        current_lbelt = left_belt
-        current_rbelt = right_belt
-
-
-
-
-"""
-for x in range(0, 10):
-    for y in range(0, 10):
-        val = shrunk_pixels[x, i][0]
-        val_band = int(round(val / color_shades))
-        for i in range(10):
-            x_pos, y_pos = lerp_wave(val_band, page_left + x * (val), y + page_top, 210, (i+1)/600)
-
-            left_belt, right_belt = insutil.cartesian_to_belt(x_pos, y_pos, m_dist)
-        
-            left_belt_delta = left_belt - current_lbelt
-            right_belt_delta = right_belt - current_rbelt
-            ins.append([int(round(insutil.mm_to_steps(-left_belt_delta))), int(round(insutil.mm_to_steps(-right_belt_delta)))])
-            current_lbelt = left_belt
-            current_rbelt = right_belt
-"""
-
-insutil.write_instructions(ins)
