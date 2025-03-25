@@ -53,7 +53,6 @@ class Triangle:
 
         # ||U'||
         radius = math.sqrt(math.pow(upx, 2) + math.pow(upy, 2))
-        print(f"circle computed at x:{upx} y:{upy} radius:{radius}")
 
         return ux, uy, radius
 

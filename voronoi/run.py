@@ -16,8 +16,6 @@ remaining_points = copy(points)
 i = 0
 for p in points:
     i += 1
-    print(f"{i} is i")
-
     remaining_points.remove(p)
     bad_triangles = set()
     polygon = set()
@@ -64,9 +62,8 @@ for e in hull:
 image = Image.new("RGBA", size=(800, 800), color=(0, 0, 0, 255))
 image_draw = ImageDraw.Draw(image)
 
-
 """
-print delaunay triangulation
+# print delaunay triangulation
 
 for triangle in tris:
     color = (randint(100, 255), randint(100, 255), randint(100, 255))
@@ -79,6 +76,8 @@ for p in points:
     image_draw.circle((p.x, p.y), radius=3, fill="red")
     pass
 """
+
+
 
 """
 for every triangle
@@ -118,8 +117,13 @@ for n1, n2 in triangle_graph.edges():
     image_draw.line((n1.x, n1.y, n2.x, n2.y))
     pass
 
-for point in points:
-    image_draw.circle((point.x, point.y), radius=3, fill="red")
+# single point <-> 
+point_map = {}
+
+for t in tris:
+    image_draw.circle((t.points[0].x, t.points[0].y), radius=3, fill="red")
+    image_draw.circle((t.points[1].x, t.points[1].y), radius=3, fill="red")
+    image_draw.circle((t.points[2].x, t.points[2].y), radius=3, fill="red")
 
 
 
