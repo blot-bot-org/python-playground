@@ -53,6 +53,39 @@ def segments_intersect(edge1, edge2): # returns none if no intersection
 
     return Point(intersection_x, intersection_y)
 
+def point_inside_polygon(point: Point, edge: Edge):
+    # uses an even odd ray intersection
+    
+    if edge.a.y > edge.b.y:
+        edge = Edge(edge.b, edge.a)
+
+    # Extract coordinates
+    px, py = point.x, point.y
+    x1, y1, x2, y2 = edge.a.x, edge.a.y, edge.b.x, edge.b.y
+
+    # Ignore horizontal edges (they don't contribute to vertical crossings)
+    if y1 == y2:
+        return False
+
+    # Handle precision issues: if py is exactly at y1 or y2, move it slightly
+    if py == y1 or py == y2:
+        py += 1e-9
+
+    # Check if the point's y is between the edge's y-range
+    if y1 <= py < y2:  
+        # Compute intersection x using line equation
+        x_intersection = x1 + (py - y1) * (x2 - x1) / (y2 - y1)
+        return px < x_intersection  # True if the intersection is to the right
+
+    return False  # No intersection
+
+
+def is_point_inside_voronoi_cell(point: Point, edges: list[Edge]) -> bool:
+    """Returns True if the point is inside the Voronoi cell defined by its edges."""
+    intersection_count = sum(point_inside_polygon(point, edge) for edge in edges)
+    return intersection_count % 2 == 1  # Odd count = inside, even count = outside
+
+
 class Triangle:
     def __init__(self, a: Point, b: Point, c: Point):
         self.points = [a, b, c]
@@ -61,7 +94,6 @@ class Triangle:
 
         self.adjacant = []
         self.convex_edges = []
-        self.non_convex_point = None
 
     def calculate_adjacant(self, triangle_mesh: list[Self]):
         for tri in triangle_mesh:
@@ -77,14 +109,6 @@ class Triangle:
         if len(self.convex_edges) > 1:
             print("ERROR! multiple convex edges")
             exit(1)
-
-        if len(self.convex_edges) == 1:
-            points = self.points[:]
-            points.remove(self.convex_edges[0].a)
-            points.remove(self.convex_edges[0].b)
-            self.non_convex_point = points[0]
-
-        pass
 
     def has_point(self, p: Point):
         return p in self.points

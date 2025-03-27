@@ -22,7 +22,7 @@ while len(points) < num_points:
 
 
 for p in points:
-    output_draw.circle((p.x, p.y), radius=2)
+    # output_draw.circle((p.x, p.y), radius=2)
     pass
 
 triangles = bowyer_watson(points)
@@ -223,6 +223,7 @@ for face in faces[:]:
         faces.remove(face)
         print("removed superface")
 
+point_edges = {}
 
 for i in range(0, len(faces)):
     colour = (random.randint(100, 255), random.randint(100, 255), random.randint(100, 255))
@@ -236,6 +237,26 @@ for i in range(0, len(faces)):
     avgy = sum([p.y for p in faces[i]]) / len(faces[i])
 
     output_draw.circle((avgx, avgy), radius=5, fill=colour)
+
+    edges = []
+    for p in range(0, len(faces[i])):
+        alternate_idx = p - 1 if p != 0 else len(faces[i]) - 1
+
+        p1 = faces[i][p]
+        p2 = faces[i][alternate_idx]
+
+        edge = Edge(p1, p2)
+        edges.append(edge)
+    
+    site_point = None
+    for p in points:
+        if is_point_inside_voronoi_cell(p, edges):
+            site_point = p
+            break
+    point_edges[site_point] = edges
+
+
+print(point_edges)
 
 
 
