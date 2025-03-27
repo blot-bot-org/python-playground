@@ -1,11 +1,14 @@
 import random
+from collections import defaultdict
+from typing import DefaultDict
 
+import networkx as nx
 from PIL import Image, ImageDraw
 
 from bowyer_watson import bowyer_watson
 from structures import *
 
-num_points = 50
+num_points = 15
 image = Image.open("../bird.png")
 output = Image.new("RGBA", size=(round(image.width * 1.2), round(image.height * 1.2)), color=(0, 0, 0, 255))
 output_draw = ImageDraw.Draw(output)
@@ -159,15 +162,81 @@ for edge in voronoi_edges:
     output_draw.line((edge.a.x, edge.a.y, edge.b.x, edge.b.y), fill="red")
     pass
 
-for v in voronoi_verticies:
-    output_draw.circle((v.x, v.y), radius=3, fill="cyan")
-
 
 # k so now i need a list of edges which form a polygon, and the associated site points
 # this could be done by representing the tesselation as a graph, where the nodes are the verticies, and edges are edges (lol)
 # then computing the polygons formed by the graph
 # then finding the centroid of the polygon, and finding it's closest site point
 # then associated said site point with the polygon
+
+
+def angle_with_x_axis(v1: Point, v2: Point) -> float:
+    return math.atan2(v2.y - v1.y, v2.x - v1.x)
+
+
+
+# remove duplicates in a bad not memory efficient aka "pythonic" way
+voronoi_edges = list(dict.fromkeys(voronoi_edges))
+voronoi_verticies = list(dict.fromkeys(voronoi_verticies))
+
+G = nx.DiGraph()
+
+for edge in voronoi_edges:
+    G.add_edge(edge.a, edge.b)
+    G.add_edge(edge.b, edge.a)
+
+# map of vertex: empty list
+edges_by_vertex = {v: [] for v in G.nodes()}
+for u,v in G.edges():
+    edges_by_vertex[u].append((v, angle_with_x_axis(u, v)))
+
+for v in edges_by_vertex:
+    # sort by angle
+    edges_by_vertex[v].sort(key=lambda x: x[1], reverse=True)
+
+used_edges = set()
+faces = []
+
+for u, edges in edges_by_vertex.items():
+    for v, _ in edges:
+        if (u, v) not in used_edges:
+            face = []
+            start = (u, v)
+            current = start
+            while True:
+                face.append(current[0])
+                used_edges.add(current)
+                v = current[1]
+                next_edges = edges_by_vertex[v]
+                for i in range(len(next_edges)):
+                    if next_edges[i][0] == current[0]:
+                        next_edge = next_edges[(i + 1) % len(next_edges)]
+                        current = (v, next_edge[0])
+                        break
+                if current == start:
+                    break
+            faces.append(face)
+
+
+for face in faces[:]:
+    if (Point(0, 0) in face and Point(image.width, image.height) in face):
+        faces.remove(face)
+        print("removed superface")
+
+
+for i in range(0, len(faces)):
+    colour = (random.randint(100, 255), random.randint(100, 255), random.randint(100, 255))
+
+    for p in range(0, len(faces[i])):
+        alternate_idx = p - 1 if p != 0 else len(faces[i]) - 1
+
+        output_draw.line((faces[i][p].x, faces[i][p].y, faces[i][alternate_idx].x, faces[i][alternate_idx].y), fill=colour)
+    
+    avgx = sum([p.x for p in faces[i]]) / len(faces[i])
+    avgy = sum([p.y for p in faces[i]]) / len(faces[i])
+
+    output_draw.circle((avgx, avgy), radius=5, fill=colour)
+
 
 
 output.save("./img.png")
