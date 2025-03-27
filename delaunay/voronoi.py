@@ -1,6 +1,4 @@
 import random
-from collections import defaultdict
-from typing import DefaultDict
 
 import networkx as nx
 from PIL import Image, ImageDraw
