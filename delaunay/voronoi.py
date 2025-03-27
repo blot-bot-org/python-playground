@@ -130,6 +130,12 @@ for bound, rev in bounds:
             cyclical_intersects.extend(sorted(list(dict.fromkeys(intersections)), key=lambda obj: obj.x, reverse=rev))
 
 
+voronoi_verticies.extend(cyclical_intersects)
+for v in voronoi_verticies[:]:
+    if v.x > image.width or v.x < 0 or v.y > image.height or v.y < 0:
+        voronoi_verticies.remove(v)
+
+
 extra_edges = []
 for i in range(0, len(cyclical_intersects)):
     next_point = cyclical_intersects[i + 1 if i + 1 != len(cyclical_intersects) else 0]
@@ -153,5 +159,16 @@ for edge in voronoi_edges[:]:
 for edge in voronoi_edges:
     output_draw.line((edge.a.x, edge.a.y, edge.b.x, edge.b.y), fill="red")
     pass
+
+for v in voronoi_verticies:
+    output_draw.circle((v.x, v.y), radius=3, fill="cyan")
+
+
+
+# k so now i need a list of edges which form a polygon, and the associated site points
+
+
+
+
 
 output.show()
