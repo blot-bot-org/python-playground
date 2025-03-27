@@ -170,4 +170,4 @@ for v in voronoi_verticies:
 # then associated said site point with the polygon
 
 
-output.show()
+output.save("./img.png")

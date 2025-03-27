@@ -19,7 +19,7 @@ class Edge:
     def __eq__(self, obj: object):
         return self.a == obj.a and self.b == obj.b or self.a == obj.b and self.b == obj.a
 
-def segments_intersect(edge1, edge2):
+def segments_intersect(edge1, edge2): # returns none if no intersection
     # Extract coordinates for convenience
     x1, y1 = edge1.a.x, edge1.a.y
     x2, y2 = edge1.b.x, edge1.b.y
@@ -39,8 +39,13 @@ def segments_intersect(edge1, edge2):
     u = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denominator
 
     # t and u should be between 0 and 1 (inclusive) for segments to intersect
-    return 0 <= t <= 1 and 0 <= u <= 1
+    if not ( 0 <= t <= 1 and 0 <= u <= 1 ):
+        return None
 
+    intersection_x = x1 + t * (x2 - x1)
+    intersection_y = y1 + t * (y2 - y1)
+
+    return Point(intersection_x, intersection_y)
 
 class Triangle:
     def __init__(self, a: Point, b: Point, c: Point):
