@@ -11,6 +11,9 @@ class Point:
     def __eq__(self, obj: object):
         return self.x == obj.x and self.y == obj.y
 
+    def __hash__(self) -> int:
+        return hash(frozenset([self.x, self.y]))
+
 @dataclass(frozen=True, eq=True)  # Freeze class to make it hashable
 class Edge:
     a: Point
@@ -18,6 +21,9 @@ class Edge:
 
     def __eq__(self, obj: object):
         return self.a == obj.a and self.b == obj.b or self.a == obj.b and self.b == obj.a
+
+    def __hash__(self) -> int:
+        return hash(frozenset([self.a, self.b]))
 
 def segments_intersect(edge1, edge2): # returns none if no intersection
     # Extract coordinates for convenience
