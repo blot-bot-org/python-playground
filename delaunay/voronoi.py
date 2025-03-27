@@ -92,7 +92,6 @@ for tri in triangles:
             voronoi_edges.append(perp_edge)
 
 
-
 # so basically a few things here:
 #   - find all intersects with bound edges, clockwise edges
 #   - for each individual list, sort by size (so all points are clockwise)
@@ -164,11 +163,11 @@ for v in voronoi_verticies:
     output_draw.circle((v.x, v.y), radius=3, fill="cyan")
 
 
-
 # k so now i need a list of edges which form a polygon, and the associated site points
-
-
-
+# this could be done by representing the tesselation as a graph, where the nodes are the verticies, and edges are edges (lol)
+# then computing the polygons formed by the graph
+# then finding the centroid of the polygon, and finding it's closest site point
+# then associated said site point with the polygon
 
 
 output.show()
