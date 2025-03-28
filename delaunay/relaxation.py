@@ -7,30 +7,25 @@ from bowyer_watson import bowyer_watson
 from structures import *
 
 num_points = 200
-image = Image.open("../bird.png")
+image = Image.open("../portrait.png")
+image = image.convert("RGB")
 points = []
 
 output = Image.new("RGBA", size=(round(image.width * 1.0), round(image.height * 1.0)), color=(0, 0, 0, 255))
 
 while len(points) < num_points:
-        x = random.randint(100, image.width - 1 - 100)
-        y = random.randint(100, image.height - 1 - 100)
+        x = random.randint(0, image.width - 1 - 0)
+        y = random.randint(0, image.height - 1 - 0)
         greyscale = image.getpixel((x,y)) # as a tuple
         greyscale = 0.299 * greyscale[0] + 0.587 * greyscale[1] + 0.114 * greyscale[2]
-        if greyscale < 150 or random.randint(0, 100) < 3:
+        if greyscale < 50 or random.randint(0, 100) < 5:
             points.append(Point(x, y))
 
 
 for i in range(0, 5):
     output = Image.new("RGBA", size=(round(image.width * 1.0), round(image.height * 1.0)), color=(0, 0, 0, 255))
-    output = image.copy()
     output_draw = ImageDraw.Draw(output)
     
-
-    for p in points:
-        # output_draw.circle((p.x, p.y), radius=2)
-        pass
-
     triangles = bowyer_watson(points)
     for tri in triangles:
         tri.calculate_adjacant(triangles)
@@ -47,13 +42,6 @@ for i in range(0, 5):
     site_points = []
     for tri in triangles:
         site_points.append(tri.get_circumcenter())
-
-    for s in site_points:
-        # output_draw.circle((s.x, s.y), radius=2)
-        pass
-
-
-
 
     voronoi_verticies = [tri.get_circumcenter() for tri in triangles]
     voronoi_edges = []
@@ -272,37 +260,6 @@ for i in range(0, 5):
         centroid_x = weighted_x / total_weight
         centroid_y = weighted_y / total_weight
 
-
-
-        """
-        area = 0
-        centroid_x, centroid_y = 0, 0
-        for e in edges:
-            cross = e.a.x * e.b.y - e.b.x * e.a.y
-            area += cross
-            centroid_x += (e.a.x + e.b.x) * cross
-            centroid_y += (e.a.y + e.b.y) * cross
-        
-        dark_vertices = 1
-        for v in polygon_points:
-            pix = image.getpixel((max(0, min(image.width - 1, (round(v.x)))), max(0, min(image.height - 1, round(v.y)))))
-            greyscale = 0.299 * pix[0] + 0.587 * pix[1] + 0.114 * pix[2]
-            dark_vertices += greyscale
-        dark_vertices /= len(polygon_points) / 255
-
-        area /= 2
-        centroid_x /= 6 * area
-        centroid_y /= 6 * area
-        """
-        
-
-
-        avgx = sum([p.x for p in faces[i]]) / len(faces[i])
-        avgy = sum([p.y for p in faces[i]]) / len(faces[i])
-
-
-        
-        
         site_point: Point = None
         for p in points:
             if is_point_inside_voronoi_cell(p, edges):
@@ -320,10 +277,7 @@ for i in range(0, 5):
         scale = 0.8
         newx = site_point.x + scale * (centroid_x - site_point.x)
         newy = site_point.y + scale * (centroid_y - site_point.y)
-        output_draw.circle((newx, newy), radius=3, fill="white")
-        for edge in edges:
-            output_draw.line((edge.a.x, edge.a.y, edge.b.x, edge.b.y), fill="gray")
-
+        output_draw.circle((newx, newy), radius=3, fill="white", outline="black")
         site_point = Point(newx, newy)
 
         point_edges[site_point] = edges
@@ -332,7 +286,39 @@ for i in range(0, 5):
     points = list(point_edges.keys())
 
 
+import numpy as np
+from python_tsp.heuristics import solve_tsp_simulated_annealing
+
+distance_matrix = np.empty((0, len(points)))
+
+for j in range(len(points)):
+    list = []
+    for k in range(len(points)):
+        dist = math.sqrt((points[j].x - points[k].x) ** 2 + (points[j].y - points[k].y) ** 2)
+        list.append(dist)
+
+    distance_matrix = np.vstack([distance_matrix, list])
+
+print(distance_matrix)
+
+permutation, distance = solve_tsp_simulated_annealing(distance_matrix)
+
+print(len(permutation))
+for i in range(0, len(permutation)):
+    e = Edge(points[permutation[i]], points[permutation[(i + 1) % len(permutation)]])
+    output_draw.line((e.a.x, e.a.y, e.b.x, e.b.y), fill="red")
+
+with open("points.json", "w") as fp:
+    fp.write("[")
+    for p in points:
+        fp.write(f"({p.x}, {p.y}), ")
+    fp.write("]")
+
+with open("permutations.json", "w") as fp:
+    fp.write("[")
+    for p in permutation:
+        fp.write(f"{p}, ")
+    fp.write("]")
 
 
-
-output.save("./img.png")
+output.show()
