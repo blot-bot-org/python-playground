@@ -6,8 +6,8 @@ from PIL import Image, ImageDraw
 from bowyer_watson import bowyer_watson
 from structures import *
 
-num_points = 200
-image = Image.open("../portrait.png")
+num_points = 1000
+image = Image.open("../bird.png")
 image = image.convert("RGB")
 points = []
 
@@ -287,7 +287,7 @@ for i in range(0, 5):
 
 
 import numpy as np
-from python_tsp.heuristics import solve_tsp_simulated_annealing
+from python_tsp.heuristics import solve_tsp_local_search
 
 distance_matrix = np.empty((0, len(points)))
 
@@ -301,7 +301,7 @@ for j in range(len(points)):
 
 print(distance_matrix)
 
-permutation, distance = solve_tsp_simulated_annealing(distance_matrix)
+permutation, distance = solve_tsp_local_search(distance_matrix)
 
 print(len(permutation))
 for i in range(0, len(permutation)):

@@ -108,7 +108,6 @@ class Triangle:
         self.convex_edges = [edge for edge in self.edges if edge not in self.convex_edges] # invert it, since we actually did all processed edges
         if len(self.convex_edges) > 1:
             print("ERROR! multiple convex edges")
-            exit(1)
 
     def has_point(self, p: Point):
         return p in self.points
