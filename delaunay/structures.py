@@ -3,7 +3,7 @@ from dataclasses import dataclass
 from typing import Self
 
 
-@dataclass(frozen=True, eq=True) # Freeze class to make it hashable
+@dataclass(frozen=True, eq=True)
 class Point:
     x: float
     y: float
@@ -14,7 +14,7 @@ class Point:
     def __hash__(self) -> int:
         return hash(frozenset([self.x, self.y]))
 
-@dataclass(frozen=True, eq=True)  # Freeze class to make it hashable
+@dataclass(frozen=True, eq=True)
 class Edge:
     a: Point
     b: Point
@@ -26,21 +26,16 @@ class Edge:
         return hash(frozenset([self.a, self.b]))
 
 def segments_intersect(edge1, edge2): # returns none if no intersection
-    # Extract coordinates for convenience
     x1, y1 = edge1.a.x, edge1.a.y
     x2, y2 = edge1.b.x, edge1.b.y
     x3, y3 = edge2.a.x, edge2.a.y
     x4, y4 = edge2.b.x, edge2.b.y
 
-    # Calculate the denominator
     denominator = (x1 - x2) * (y3 - y4) - (y1 - y2) * (x3 - x4)
 
-    # If denominator is zero, lines are parallel or coincident.
-    # For simplicity, we return False here (assuming overlapping segments do not count).
     if denominator == 0:
         return False
 
-    # Calculate t and u parameters using the derived formula
     t = ((x1 - x3) * (y3 - y4) - (y1 - y3) * (x3 - x4)) / denominator
     u = ((x1 - x3) * (y1 - y2) - (y1 - y3) * (x1 - x2)) / denominator
 
@@ -59,31 +54,26 @@ def point_inside_polygon(point: Point, edge: Edge):
     if edge.a.y > edge.b.y:
         edge = Edge(edge.b, edge.a)
 
-    # Extract coordinates
     px, py = point.x, point.y
     x1, y1, x2, y2 = edge.a.x, edge.a.y, edge.b.x, edge.b.y
 
-    # Ignore horizontal edges (they don't contribute to vertical crossings)
     if y1 == y2:
         return False
 
-    # Handle precision issues: if py is exactly at y1 or y2, move it slightly
     if py == y1 or py == y2:
         py += 1e-9
 
-    # Check if the point's y is between the edge's y-range
     if y1 <= py < y2:  
-        # Compute intersection x using line equation
         x_intersection = x1 + (py - y1) * (x2 - x1) / (y2 - y1)
-        return px < x_intersection  # True if the intersection is to the right
+        return px < x_intersection
 
-    return False  # No intersection
+    return False
 
 
 def is_point_inside_voronoi_cell(point: Point, edges: list[Edge]) -> bool:
     """Returns True if the point is inside the Voronoi cell defined by its edges."""
     intersection_count = sum(point_inside_polygon(point, edge) for edge in edges)
-    return intersection_count % 2 == 1  # Odd count = inside, even count = outside
+    return intersection_count % 2 == 1
 
 
 class Triangle:
